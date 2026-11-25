@@ -1,0 +1,403 @@
+{
+  "info": {
+    "name": "FlipPlay API - Demo Rubric",
+    "description": "Sequential happy-path and failure-path checks for the FlipPlay Laravel API demo. Run after php artisan migrate:fresh --seed and php artisan serve --host=127.0.0.1 --port=8097.",
+    "_postman_id": "d3c6b0d2-85ed-4fdf-9448-22aba8cf426a",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. List all media",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media"
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Returns a media data array', function () { pm.expect(json.data).to.be.an('array'); });",
+              "pm.test('Media resources include users relationship', function () { if (json.data.length) pm.expect(json.data[0].users).to.be.an('array'); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "2. Search media by title",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media?search=Frieren"
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Search returns the matching title', function () { pm.expect(json.data.some(function (media) { return media.title.includes('Frieren'); })).to.equal(true); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "3. Create media",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media",
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          },
+          "raw": "{\n  \"title\": \"{{media_title}}\",\n  \"category\": \"Anime\",\n  \"genre\": \"Fantasy · Adventure\",\n  \"synopsis\": \"Created by the FlipPlay Postman demo collection.\",\n  \"release_year\": 2025,\n  \"cover_url\": \"https://example.com/flipplay-demo.jpg\"\n}"
+        }
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "const title = 'Postman Demo Media ' + Date.now();",
+              "pm.collectionVariables.set('media_title', title);",
+              "pm.collectionVariables.set('updated_title', title + ' Updated');"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "prerequest"
+        },
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 201', function () { pm.response.to.have.status(201); });",
+              "const json = pm.response.json();",
+              "pm.collectionVariables.set('media_id', json.data.id);",
+              "pm.test('Created resource has expected fields', function () { pm.expect(json.data.title).to.eql(pm.collectionVariables.get('media_title')); pm.expect(json.data.users).to.be.an('array'); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "4. Show created media",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media/{{media_id}}"
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Returns the created media and loaded users', function () { pm.expect(json.data.id).to.eql(Number(pm.collectionVariables.get('media_id'))); pm.expect(json.data.users).to.be.an('array'); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "5. Update media",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media/{{media_id}}",
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          },
+          "raw": "{\n  \"title\": \"{{updated_title}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Returns the updated title', function () { pm.expect(pm.response.json().data.title).to.eql(pm.collectionVariables.get('updated_title')); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "6. Failure - missing title returns 422",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media",
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          },
+          "raw": "{\n  \"category\": \"Anime\",\n  \"genre\": \"Fantasy\",\n  \"synopsis\": \"The title is intentionally missing.\",\n  \"release_year\": 2025\n}"
+        }
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 422', function () { pm.response.to.have.status(422); });",
+              "const json = pm.response.json();",
+              "pm.test('Returns title validation error', function () { pm.expect(json.errors).to.have.property('title'); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "7. Failure - duplicate title returns 422",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media",
+        "body": {
+          "mode": "raw",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          },
+          "raw": "{\n  \"title\": \"{{updated_title}}\",\n  \"category\": \"Anime\",\n  \"genre\": \"Fantasy\",\n  \"synopsis\": \"This duplicate title should be rejected.\",\n  \"release_year\": 2025\n}"
+        }
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 422', function () { pm.response.to.have.status(422); });",
+              "pm.test('Returns title uniqueness error', function () { pm.expect(pm.response.json().errors).to.have.property('title'); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "8. Attach media to demo user's collection",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/users/{{user_id}}/collection/{{media_id}}"
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 201 for a new attachment', function () { pm.response.to.have.status(201); });",
+              "const json = pm.response.json();",
+              "pm.test('User resource includes the attached media', function () { pm.expect(json.data.media.some(function (media) { return media.id === Number(pm.collectionVariables.get('media_id')); })).to.equal(true); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "9. Show demo user's collection",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/users/{{user_id}}/collection"
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "const json = pm.response.json();",
+              "pm.test('Collection includes the new media', function () { pm.expect(json.data.media.some(function (media) { return media.id === Number(pm.collectionVariables.get('media_id')); })).to.equal(true); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "10. Detach media from demo user's collection",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/users/{{user_id}}/collection/{{media_id}}"
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 200', function () { pm.response.to.have.status(200); });",
+              "pm.test('Collection no longer includes the media', function () { pm.expect(pm.response.json().data.media.some(function (media) { return media.id === Number(pm.collectionVariables.get('media_id')); })).to.equal(false); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "11. Delete created media",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media/{{media_id}}"
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 204', function () { pm.response.to.have.status(204); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    },
+    {
+      "name": "12. Failure - deleted media returns 404",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{base_url}}/api/media/{{media_id}}"
+      },
+      "event": [
+        {
+          "script": {
+            "exec": [
+              "pm.test('Returns HTTP 404', function () { pm.response.to.have.status(404); });",
+              "pm.test('Returns a JSON error body', function () { pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json'); });"
+            ],
+            "type": "text/javascript"
+          },
+          "listen": "test"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8097"
+    },
+    {
+      "key": "user_id",
+      "value": "1"
+    },
+    {
+      "key": "media_id",
+      "value": ""
+    },
+    {
+      "key": "media_title",
+      "value": ""
+    },
+    {
+      "key": "updated_title",
+      "value": ""
+    }
+  ]
+}
